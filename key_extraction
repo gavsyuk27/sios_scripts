@@ -1,6 +1,7 @@
 #!/bin/bash
 
 ###Exctracting primary key and foreign key columns for cloud_datastore, cloud_environment, cloud_vm, cloud_host, virtual_disk
+###Output for this script is a single tar.gz file containing a text file for each of the input tables.
 
 ###Variables
 username="postgres"

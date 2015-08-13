@@ -1,10 +1,30 @@
 #!/bin/bash
 
+#Analyzing the data found using the key_extraction script.
+#Collecting the needed information from the products of the prior script
+#Output of this program are answers to these questions:
+#(a) How many environments are there?
+#(b) How many VMs per environments?
+#(c) How many hosts per environment?
+#(d) How many Datastores per environment?
+#(e) How many VMs per host?
+#(f) How many VMs per datastore?
+
+###Variables
+dataVMs=0
+hostVMs=0
+avData=0
+avHost=0
+declare -A dataArray
+declare -A hostArray
+
+#Reads the last line of the file, which contains the number of rows
 environments=$(tac cloud_environment.txt |egrep -m 1 .)
 hosts=$(tac cloud_host.txt |egrep -m 1 .)
 datastores=$(tac cloud_datastore.txt |egrep -m 1 .)
 vms=$(awk '/./{line=$0} END{print line}' cloud_vm.txt)
 
+#Cut down the variables to only include the number
 environments=${environments##*(}
 environments=${environments% *}
 hosts=${hosts##*(}
@@ -13,20 +33,17 @@ datastores=${datastores##*(}
 datastores=${datastores% *}
 vms=${vms##*(}
 vms=${vms% *}
-dataVMs=0
-hostVMs=0
-avData=0
-avHost=0
-declare -A dataArray
-declare -A hostArray
+
 echo "Total number of environments: $environments"
 echo "Total number of VMs: $vms"
 echo "Total number of hosts: $hosts"
 echo "Total number of datastores: $datastores"
 
+#Go through cloud_vm.txt file line by line, collect information from the ID, datastore_ID, and host_id collumns
+#Information for datastores is stored in an associative array
+#Information for hosts is stored in a seperate associative array
 while read p
 do
-
         line=($p)
         if [[ "${#line[@]}" -ge "9" ]]
         then
@@ -41,6 +58,7 @@ do
         fi
 done<cloud_vm.txt
 
+#Go through the datastore array, counting how many VMs are associated with each datastore
 for key in "${!dataArray[@]}"
 do
         y="${dataArray[$key]//[^,]}"
@@ -48,6 +66,7 @@ do
         x=$((x+1))
         dataVMs=$((dataVMs+x))
 done
+#Go through the host array, counting how many VMs are associated with each host
 for key in "${!hostArray[@]}"
 do
         y="${hostArray[$key]//[^,]}"
@@ -55,7 +74,10 @@ do
         x=$((x+1))
         hostVMs=$((hostVMs+x))
 done
+
+#Calculate the average number of VMs per datastore (rounded up to nearest whole number)
 average=$(echo "$dataVMs/$datastores" | bc -l)
 python -c "from math import ceil; print 'Number of VMs per datastore: %s' % ceil($average)"
+#Calculate the average number of VMs per host (rounded up to nearest whole number)
 average=$(echo "$hostVMs/$hosts" | bc -l)
 python -c "from math import ceil; print 'Number of VMs per host: %s' % ceil($average)"
