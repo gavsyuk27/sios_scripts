@@ -1,0 +1,61 @@
+#!/bin/bash
+
+environments=$(tac cloud_environment.txt |egrep -m 1 .)
+hosts=$(tac cloud_host.txt |egrep -m 1 .)
+datastores=$(tac cloud_datastore.txt |egrep -m 1 .)
+vms=$(awk '/./{line=$0} END{print line}' cloud_vm.txt)
+
+environments=${environments##*(}
+environments=${environments% *}
+hosts=${hosts##*(}
+hosts=${hosts% *}
+datastores=${datastores##*(}
+datastores=${datastores% *}
+vms=${vms##*(}
+vms=${vms% *}
+dataVMs=0
+hostVMs=0
+avData=0
+avHost=0
+declare -A dataArray
+declare -A hostArray
+echo "Total number of environments: $environments"
+echo "Total number of VMs: $vms"
+echo "Total number of hosts: $hosts"
+echo "Total number of datastores: $datastores"
+
+while read p
+do
+
+        line=($p)
+        if [[ "${#line[@]}" -ge "9" ]]
+        then
+                if [[ "${#line[@]}" -le "10" ]]
+                then
+                        key="${line[2]}"
+                        value="${line[0]}"
+                        dataArray[$key]="${dataArray[$key]}${dataArray[$key]:+,}$value"
+                        key="${line[7]}"
+                        hostArray[$key]="${hostArray[$key]}${hostArray[$key]:+,}$value"
+                fi
+        fi
+done<cloud_vm.txt
+
+for key in "${!dataArray[@]}"
+do
+        y="${dataArray[$key]//[^,]}"
+        x="${#y}"
+        x=$((x+1))
+        dataVMs=$((dataVMs+x))
+done
+for key in "${!hostArray[@]}"
+do
+        y="${hostArray[$key]//[^,]}"
+        x="${#y}"
+        x=$((x+1))
+        hostVMs=$((hostVMs+x))
+done
+average=$(echo "$dataVMs/$datastores" | bc -l)
+python -c "from math import ceil; print 'Number of VMs per datastore: %s' % ceil($average)"
+average=$(echo "$hostVMs/$hosts" | bc -l)
+python -c "from math import ceil; print 'Number of VMs per host: %s' % ceil($average)"
